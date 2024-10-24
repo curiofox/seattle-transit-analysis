@@ -203,18 +203,51 @@ def create_time_delta(df, time_col, delta_col):
 
     delta_col: the name of the new column
     """
-    # Create a column of the differences
-    df[delta_col] = df[time_col].diff()
-
-    # create a timedelta object equal to one day
     one_day = pd.to_timedelta(1, unit='d')
 
-    # calculate the time differential between the last and the first value.
-    df.loc[df.index[0], delta_col] = \
-        df[time_col].iloc[0] - \
-        (df[time_col].iloc[-1] - one_day)
-
-    return df
+    delta_df = pd.DataFrame(index=df.index, columns=[delta_col])
+    delta_df[delta_col] = df[time_col].diff()
+    delta_df.iloc[0, 0] = df[time_col].iloc[0] - (df[time_col].iloc[-1] - one_day)
+    return delta_df
 
 
+    # # Create a column of the differences
+    # df[delta_col] = df[time_col].diff()
+    #
+    # # create a timedelta object equal to one day
+    # one_day = pd.to_timedelta(1, unit='d')
+    #
+    # # calculate the time differential between the last and the first value.
+    # df.loc[df.index[0], delta_col] = \
+    #     df[time_col].iloc[0] - \
+    #     (df[time_col].iloc[-1] - one_day)
+    #
+    # return df
 
+
+def create_time_df(df):
+    one_day = pd.to_timedelta(1, unit='d')
+
+    delta_df = df.diff()
+    delta_df.iloc[0, 0] = df.iloc[0,0] - (df.iloc[-1,0] - one_day)
+    return delta_df
+
+
+##############################################################
+# Route Frequency Analysis
+#
+##############################################################
+
+def create_stop_freq(trips, stop_times, routes, calendar_week):
+    routes_filtered = routes.loc[:, ['route_id', 'route_short_name', 'route_desc', 'route_url']]
+    calendar_week_filtered = calendar_week.drop(labels=['start_date', 'end_date'], axis=1)
+    trips_filtered = trips.loc[:, ['trip_id',
+                                   'route_id',
+                                   'service_id',
+                                   'trip_headsign',
+                                   'direction_id',
+                                   'shape_id']]
+    trips_filtered = pd.merge(left=trips_filtered, right=routes_filtered, how="inner", on="route_id")
+    trips_filtered = pd.merge(left=trips_filtered, right=calendar_week_filtered, how='inner', on='service_id')
+    stop_freq = pd.merge(left=stop_times, right=trips_filtered, how="inner", on="trip_id")
+    return stop_freq
